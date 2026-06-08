@@ -409,6 +409,10 @@ Kun 的设计站在先行项目的肩膀上：
 - **[DeepSeek](https://github.com/deepseek-ai)**：提供模型与 API。
 - 所有为 DeepSeek GUI 提交 issue、建议、代码和文档的贡献者。
 
+<a href="https://github.com/XingYu-Zhong/DeepSeek-GUI/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=XingYu-Zhong/DeepSeek-GUI" />
+</a>
+
 > [!NOTE]
 > 本项目与 DeepSeek Inc. 无隶属关系。
 

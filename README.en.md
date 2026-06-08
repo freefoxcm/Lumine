@@ -426,6 +426,10 @@ We are also grateful to:
 - **[DeepSeek](https://github.com/deepseek-ai)**: for the models and API.
 - Everyone who contributes issues, ideas, code, and documentation to DeepSeek GUI.
 
+<a href="https://github.com/XingYu-Zhong/DeepSeek-GUI/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=XingYu-Zhong/DeepSeek-GUI" />
+</a>
+
 > [!NOTE]
 > This project is not affiliated with DeepSeek Inc.
 
