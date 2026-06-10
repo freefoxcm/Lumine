@@ -101,6 +101,42 @@ describe('thread event sink binding', () => {
     expect(getState().lastSeq).toBe(9)
     expect(getState().turnReasoningFirstAtByUserId['user-current']).toEqual(expect.any(Number))
   })
+
+  it('drops replayed deltas at or below the subscription floor', () => {
+    const { getState, set, get } = makeSinkHarness({ activeThreadId: 'thread-current', lastSeq: 100 })
+    const sink = buildThreadEventSink(set, get, {
+      threadId: 'thread-current',
+      sinceSeq: 100
+    })
+
+    sink.onDeltas([
+      { kind: 'agent_message', text: 'replayed history', seq: 90 },
+      { kind: 'agent_message', text: 'fresh answer', seq: 101 }
+    ])
+
+    expect(getState().liveAssistant).toBe('fresh answer')
+    expect(getState().lastSeq).toBe(101)
+  })
+
+  it('drops duplicate delta seqs across batches', () => {
+    const { getState, set, get } = makeSinkHarness({ activeThreadId: 'thread-current' })
+    const sink = buildThreadEventSink(set, get, { threadId: 'thread-current' })
+
+    sink.onDeltas([{ kind: 'agent_message', text: 'hello', seq: 11 }])
+    sink.onDeltas([{ kind: 'agent_message', text: 'hello', seq: 11 }])
+    sink.onDeltas([{ kind: 'agent_message', text: ' world', seq: 12 }])
+
+    expect(getState().liveAssistant).toBe('hello world')
+  })
+
+  it('never rewinds lastSeq when a stale heartbeat seq arrives', () => {
+    const { getState, set, get } = makeSinkHarness({ activeThreadId: 'thread-current', lastSeq: 500 })
+    const sink = buildThreadEventSink(set, get, { threadId: 'thread-current' })
+
+    sink.onSeq(3)
+
+    expect(getState().lastSeq).toBe(500)
+  })
 })
 
 describe('thread event sink runtime errors', () => {

@@ -508,6 +508,14 @@ export function syncTurnCompletionPoll(
 export type ThreadEventSinkBinding = {
   threadId?: string
   signal?: AbortSignal
+  /**
+   * Seq the subscription replays from. Deltas at or below this floor are
+   * duplicates of text already in the timeline (a replayed backlog or a
+   * re-delivered live event) and are dropped instead of appended, so a
+   * stale cursor can no longer re-stream the whole conversation into the
+   * live bubble.
+   */
+  sinceSeq?: number
 }
 
 export function buildThreadEventSink(
@@ -516,6 +524,7 @@ export function buildThreadEventSink(
   binding: ThreadEventSinkBinding = {}
 ): ThreadEventSink {
   const boundThreadId = binding.threadId?.trim() ?? ''
+  let appliedDeltaSeqFloor = binding.sinceSeq ?? 0
   const isCurrentStream = (): boolean => {
     if (binding.signal?.aborted) return false
     return !boundThreadId || get().activeThreadId === boundThreadId
@@ -525,8 +534,11 @@ export function buildThreadEventSink(
     onSeq: (seq) => {
       if (!isCurrentStream()) return
       resetBusyRecoveryAttempts()
+      // Monotonic: heartbeats and replays must never rewind the cursor —
+      // a rewound lastSeq becomes the next subscription's since_seq and
+      // replays history.
       set((s) => ({
-        lastSeq: seq,
+        lastSeq: Math.max(s.lastSeq, seq),
         error: clearRuntimeStreamRecoveringError(s.error)
       }))
     },
@@ -565,10 +577,18 @@ export function buildThreadEventSink(
           error: clearRuntimeStreamRecoveringError(s.error)
         }
       }),
-    onDeltas: (deltas) =>
+    onDeltas: (rawDeltas) => {
+      if (!isCurrentStream()) return
+      const deltas: typeof rawDeltas = []
+      for (const delta of rawDeltas) {
+        if (typeof delta.seq === 'number') {
+          if (delta.seq <= appliedDeltaSeqFloor) continue
+          appliedDeltaSeqFloor = delta.seq
+        }
+        deltas.push(delta)
+      }
+      if (deltas.length === 0) return
       set((s) => {
-        if (!isCurrentStream()) return {}
-        if (deltas.length === 0) return {}
         resetBusyRecoveryAttempts()
         const nextError = clearRuntimeStreamRecoveringError(s.error)
         const seqs = deltas
@@ -622,7 +642,8 @@ export function buildThreadEventSink(
             ? { turnReasoningLastAtByUserId: nextReasoningLastAtByUserId }
             : {})
         }
-      }),
+      })
+    },
     onTool: (ev) => {
       if (!isCurrentStream()) return
       notifyWriteWorkspaceFileRefresh(get, ev)

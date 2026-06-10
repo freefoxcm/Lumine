@@ -790,6 +790,30 @@ describe('HTTP server', () => {
     expect(ids.every((id) => id > secondSeq)).toBe(true)
   })
 
+  it('delivers an event exactly once when it lands in both backlog and live bus', async () => {
+    const h = buildHarness()
+    const thread = await h.threadService.create(
+      { workspace: '/tmp', model: 'deepseek-chat', mode: 'agent' },
+      { id: 'thr_dedup', title: 'Dedup' }
+    )
+    const recorded = await h.runtime.events.record({ kind: 'heartbeat', threadId: thread.id })
+
+    const eventStream = await dispatchRequest(
+      h.router,
+      new Request(`http://localhost/v1/threads/${thread.id}/events?since_seq=0`, {
+        headers: { authorization: 'Bearer tok-1' }
+      })
+    )
+    // Simulate the persist/publish race: the event is already in the replayed
+    // backlog when the live bus re-delivers it after the subscription starts.
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    h.bus.publish(recorded)
+
+    const frames = await readSseEvents(eventStream)
+    const occurrences = frames.filter((frame) => frame.includes(`id: ${recorded.seq}\n`))
+    expect(occurrences).toHaveLength(1)
+  })
+
   it('skips SSE backlog replay when the client is already caught up', async () => {
     const h = buildHarness()
     const thread = await h.threadService.create(
