@@ -300,6 +300,8 @@ export type ClawImSettingsV1 = {
   model: string
   mode: ClawRunMode
   responseTimeoutMs: number
+  /** Stream agent replies to Feishu / Lark as a single continuously-updated message. Default true. */
+  feishuStream?: boolean
 }
 
 export type ClawTaskScheduleV1 = {

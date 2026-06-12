@@ -71,7 +71,8 @@ export function defaultClawSettings(): ClawSettingsV1 {
       workspaceRoot: '',
       model: DEFAULT_CLAW_MODEL,
       mode: 'agent',
-      responseTimeoutMs: 120_000
+      responseTimeoutMs: 120_000,
+      feishuStream: true
     },
     channels: [],
     tasks: []
@@ -115,7 +116,8 @@ export function normalizeClawSettings(input: ClawSettingsPatchV1 | undefined): C
       workspaceRoot: typeof im.workspaceRoot === 'string' ? im.workspaceRoot.trim() : '',
       model: typeof im.model === 'string' && im.model.trim() ? im.model.trim() : DEFAULT_CLAW_MODEL,
       mode: normalizeRunMode(im.mode),
-      responseTimeoutMs: normalizePositiveInteger(im.responseTimeoutMs, defaults.im.responseTimeoutMs, 5_000, 600_000)
+      responseTimeoutMs: normalizePositiveInteger(im.responseTimeoutMs, defaults.im.responseTimeoutMs, 5_000, 600_000),
+      feishuStream: normalizeBoolean(im.feishuStream, defaults.im.feishuStream ?? true)
     },
     channels: rawChannels
       .map((channel, index): ClawImChannelV1 => {
